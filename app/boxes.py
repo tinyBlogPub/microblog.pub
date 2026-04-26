@@ -101,6 +101,7 @@ async def save_outbox_object(
         is_transient=is_transient,
         conversation=conversation,
         slug=slug,
+        in_reply_to=ro.in_reply_to,
     )
     db_session.add(outbox_object)
     await db_session.flush()
@@ -1264,16 +1265,14 @@ async def _get_replies_count(
     return (
         await db_session.scalar(
             select(func.count(models.InboxObject.id)).where(
-                func.json_extract(models.InboxObject.ap_object, "$.inReplyTo")
-                == replied_object_ap_id,
+                models.InboxObject.in_reply_to == replied_object_ap_id,
                 models.InboxObject.is_deleted.is_(False),
             )
         )
     ) + (
         await db_session.scalar(
             select(func.count(models.OutboxObject.id)).where(
-                func.json_extract(models.OutboxObject.ap_object, "$.inReplyTo")
-                == replied_object_ap_id,
+                models.OutboxObject.in_reply_to == replied_object_ap_id,
                 models.OutboxObject.is_deleted.is_(False),
             )
         )
@@ -1968,6 +1967,7 @@ async def _process_note_object(
         is_hidden_from_stream=not stream_visibility_callback(object_info),
         # We may already have some replies in DB
         replies_count=await _get_replies_count(db_session, ro.ap_id),
+        in_reply_to=ro.in_reply_to,
     )
 
     db_session.add(inbox_object)
@@ -2218,6 +2218,7 @@ async def _handle_announce_activity(
                         db_session, announced_object
                     ),
                     is_hidden_from_stream=True,
+                    in_reply_to=announced_object.in_reply_to,
                 )
                 db_session.add(announced_inbox_object)
                 await db_session.flush()
@@ -2430,6 +2431,7 @@ async def save_to_inbox(
         ),
         activity_object_ap_id=activity_ro.activity_object_ap_id,
         is_hidden_from_stream=True,
+        in_reply_to=activity_ro.in_reply_to,
     )
 
     db_session.add(inbox_object)
@@ -2619,6 +2621,7 @@ async def save_object_to_inbox(
         activity_object_ap_id=ro.activity_object_ap_id,
         og_meta=await opengraph.og_meta_from_note(db_session, ro),
         is_hidden_from_stream=True,
+        in_reply_to=ro.in_reply_to,
     )
 
     db_session.add(inbox_object)

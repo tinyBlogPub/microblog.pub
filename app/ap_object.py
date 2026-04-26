@@ -212,10 +212,6 @@ class Object:
         return None
 
     @property
-    def in_reply_to(self) -> str | None:
-        return self.ap_object.get("inReplyTo")
-
-    @property
     def is_local_reply(self) -> bool:
         if not self.in_reply_to:
             return False
@@ -349,3 +345,7 @@ class RemoteObject(Object):
     @property
     def actor(self) -> Actor:
         return self._actor
+
+    @property
+    def in_reply_to(self) -> str | None:
+        return self._raw_object.get("inReplyTo")
